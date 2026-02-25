@@ -1,244 +1,305 @@
- SKILL SPECIFICATION: CV SCREENING
-1. Purpose of the Skill
+# CV Screening Skill
 
-The ability to evaluate and filter CVs in a:
+## Purpose
 
-Structured and systematic way
+Given a Job Description (JD) and a batch of CVs, this skill:
+1. Parses and structures the JD into evaluation criteria
+2. Screens each CV against a minimum threshold (rapid filter)
+3. Scores passing CVs using a weighted rubric
+4. Returns a ranked shortlist with decision and reasoning per candidate
 
-Objective (non-emotional, non-biased)
+---
 
-Criteria-driven
+## Step 1 — Parse JD into Criteria Matrix
 
-Time-efficient while maintaining shortlist quality
+Before reviewing any CV, extract the following four categories from the JD:
 
-I. Core Competencies
-1. JD Structuring Ability
-Description
+```
+MUST_HAVE:       Non-negotiable minimums. Failing any = instant eliminate.
+CORE:            Primary evaluation dimensions (drive 70% of score).
+NICE_TO_HAVE:    Bonus signals that add score but don't block.
+RED_FLAGS:       Patterns that increase risk. Weighted as score penalties.
+```
 
-Ability to break down a Job Description into 4 clear categories:
+### Extraction Instructions
 
-Must-have – Non-negotiable requirements
+- Read the JD thoroughly. Do NOT infer requirements not present in the JD.
+- Map each requirement to exactly one category.
+- For `MUST_HAVE`, identify: minimum years of experience, required certifications, mandatory technical skills, role-specific licenses.
+- For `CORE`, identify: key functional skills, measurable outcomes expected, domain expertise.
+- For `NICE_TO_HAVE`, identify: preferred tools, preferred industry background, bonus certifications.
+- For `RED_FLAGS`, default patterns apply unless overridden by config (see defaults below).
 
-Core competencies – 70% of hiring decision weight
+### Default Red Flag Patterns
 
-Nice-to-have – Value-added qualifications
+| Pattern | Severity |
+|---|---|
+| 3+ jobs each < 6 months tenure in last 3 years | HIGH |
+| Unexplained gap > 12 months (no context given) | MEDIUM |
+| Role downgrade without explanation (e.g., Manager → Associate) | MEDIUM |
+| All responsibilities listed, zero measurable results | LOW |
+| Mismatch between claimed seniority and actual tenure | HIGH |
 
-Red flags – Potential risk indicators
+---
 
-Proficiency Indicators
+## Step 2 — Rapid Screen (Pass / Eliminate)
 
-Creates a fixed evaluation checklist before reviewing CVs
+For each CV, spend ≤60 seconds checking MUST_HAVE criteria only.
 
-Applies consistent criteria across candidates
+**Rules:**
+- If ANY `MUST_HAVE` criterion is unmet → status: `ELIMINATED`, reason: list the unmet criteria.
+- If all `MUST_HAVE` met → proceed to Step 3.
+- Do NOT read CV deeply at this stage. Scan for keywords and numbers only.
+- Do NOT be influenced by: visual design, layout, company brand names.
 
-Avoids brand-name bias
+**Output per CV at this stage:**
+```json
+{
+  "candidate_id": "...",
+  "rapid_screen": "PASS" | "ELIMINATED",
+  "eliminated_reasons": ["..."]  // only if ELIMINATED
+}
+```
 
-Maturity Levels
+Target: eliminate 50–70% of CVs at this step.
 
-Junior: Reads JD descriptively
+---
 
-Mid-level: Categorizes requirements clearly
+## Step 3 — Weighted Scoring (PASS candidates only)
 
-Senior: Refines JD structure to improve screening accuracy and risk prediction
+Apply the scoring rubric to each candidate who passed Step 2.
 
-2. Rapid Screening (30–60 seconds per CV)
-Description
+### Default Weight Table (overridable via config)
 
-Ability to eliminate 50–70% of unsuitable CVs quickly by checking:
+| Dimension | Weight | What to Evaluate |
+|---|---|---|
+| `relevant_experience` | 30% | Years + depth in directly relevant roles |
+| `technical_skills` | 30% | Functional/technical match to CORE criteria |
+| `measurable_achievements` | 20% | Quantified results (%, $, volume, time saved) |
+| `growth_mindset` | 10% | Promotions, learning signals, side projects, certs |
+| `employment_stability` | 10% | Avg tenure, logical career progression |
 
-Minimum years of experience
+### Scoring Scale (per dimension)
 
-Relevant industry/role alignment
+| Score | Label | Criteria |
+|---|---|---|
+| 1 | Very Weak | Minimal or no evidence |
+| 2 | Below Average | Some evidence but significant gaps |
+| 3 | Meets Expectations | Clear evidence, meets JD requirement |
+| 4 | Above Average | Strong evidence, exceeds JD in this area |
+| 5 | Exceptional | Outstanding, top 10% signal |
 
-Directly related job functions
+### Score Calculation
 
-Abnormal job-hopping patterns (e.g., 3–6 month tenures)
+```
+weighted_score = Σ (dimension_score × dimension_weight)
+max_possible   = 5.0
+percentage     = (weighted_score / 5.0) × 100
+```
+
+### Red Flag Penalties
 
-Performance Indicators
-
-Maximum 1 minute per CV (initial screening)
-
-At least 60% of shortlisted candidates pass the main interview
-
-Common Mistakes
-
-Over-reading too early
-
-Being influenced by visual design
-
-Letting prestige override relevance
-
-3. Structured Scoring & Quantitative Evaluation
-Description
-
-Ability to design and apply a weighted scoring framework.
-
-Example Framework
-Criteria	Weight
-Relevant Experience	30%
-Technical/Functional Skills	30%
-Measurable Achievements	20%
-Growth Mindset / Learning	10%
-Employment Stability	10%
-Scoring Scale
-
-1 = Very weak
-
-3 = Meets expectations
-
-5 = Exceptional
-
-Standards
-
-Eliminate candidates scoring below 60%
-
-Justify evaluation decisions with clear reasoning
-
-4. Deep Review & Pattern Recognition
-
-(For top 20–30% candidates)
-
-Focus Areas
-
-Results vs Responsibilities
-
-Weak: “Managed marketing team”
-
-Strong: “Increased traffic by 120% in 6 months”
-
-Ownership Level
-
-Led independently
-
-Co-owned
-
-Supported
-
-Career Logic
-
-Logical progression
-
-Industry switching rationale
-
-Unexplained downgrades
-
-Advanced Capability (Senior Level)
-
-Predict performance risk
-
-Identify early attrition risk
-
-Assess adaptability to startup or high-growth environments
-
-5. Culture & Motivation Assessment
-Indicators to Look For
-
-Side projects
-
-Leadership roles
-
-Public speaking or writing
-
-Cross-functional exposure
-
-For Startup or Agile Environments
-
-Prioritize candidates with:
-
-Experience in smaller organizations
-
-Multi-tasking capability
-
-Self-built achievements
-
-Strong ownership mindset
-
-6. Pre-Screen Interview Skill (10–15 Minutes)
-Objectives
-
-Verify CV information
-
-Assess communication clarity
-
-Validate motivation
-
-Align salary expectations
-
-Standard Questions
-
-Why did you leave your most recent role?
-
-What project are you most proud of?
-
-What are your salary expectations?
-
-Are you currently interviewing elsewhere?
-
-KPI
-
-Reduce failure rate in formal interviews
-
-Detect misalignment before advancing candidates
-
-II. Behavioral Indicators
-Strong CV Screener
-
-Speaks in data (“Candidate scored 78%”)
-
-Documents elimination reasons clearly
-
-Uses consistent scoring criteria
-
-Reviews CVs in batches to reduce bias
-
-Compares candidates against JD, not against each other
-
-Weak CV Screener
-
-Relies on gut feeling
-
-Overvalues company brand names
-
-Changes evaluation criteria per candidate
-
-Gets influenced by design or formatting
-
-III. Performance KPIs
-Metric	Strong Benchmark
-Screening Time	≤ 1 min per CV (initial round)
-Interview Pass Rate	≥ 60%
-Offer Acceptance Rate	≥ 70%
-Early Attrition (First 3 months)	≤ 15%
-IV. Competency Maturity Levels
-Level 1 – Basic Screener
-
-Screens based mainly on years of experience
-
-Prone to bias
-
-No structured scoring system
-
-Level 2 – Structured Screener
-
-Uses weighted scoring
-
-Screens in batches
-
-Can justify decisions clearly
-
-Level 3 – Strategic Talent Filter
-
-Predicts long-term performance
-
-Identifies high-potential talent
-
-Refines JD to improve talent pipeline quality
-
-Optimizes CV → Interview → Offer conversion
-
-V. Core Evaluation Formula
-
-Candidate Fit = (Capability × Results × Stability) + Motivation
-
-If one of the first three factors is weak → High performance risk
-If motivation is weak → High attrition risk
+Apply AFTER calculating weighted score:
+
+| Severity | Penalty |
+|---|---|
+| HIGH | −10 percentage points per flag |
+| MEDIUM | −5 percentage points per flag |
+| LOW | −2 percentage points per flag |
+
+Final score = `max(0, percentage − total_penalties)`
+
+### Decision Thresholds
+
+| Final Score | Decision |
+|---|---|
+| ≥ 75% | `SHORTLIST` — Recommend for interview |
+| 60–74% | `MAYBE` — Shortlist if headcount allows |
+| < 60% | `ELIMINATE` — Below threshold |
+
+---
+
+## Step 4 — Deep Pattern Review (SHORTLIST candidates only)
+
+For candidates with decision `SHORTLIST` or `MAYBE`, perform deeper analysis:
+
+### 4.1 Results vs Responsibilities Check
+
+Classify each role description:
+- **Results-oriented**: Contains quantified outcomes (%, volume, revenue, time). Score signal: HIGH.
+- **Responsibility-oriented**: Describes tasks only, no outcomes. Score signal: LOW.
+
+Adjust `measurable_achievements` score if CV pattern contradicts initial scan.
+
+### 4.2 Ownership Level Classification
+
+For the candidate's 2 most recent roles, classify:
+- `OWNED`: "Led", "Built", "Launched", "Founded"
+- `CO-OWNED`: "Co-led", "Collaborated", "Part of team"
+- `SUPPORTED`: "Assisted", "Helped", "Contributed to"
+
+Higher ownership → positive signal for senior roles.
+
+### 4.3 Career Logic Check
+
+Assess whether career trajectory makes sense:
+- Logical progression (seniority increases over time) → +signal
+- Industry switch WITH explanation → neutral
+- Industry switch WITHOUT explanation → flag for pre-screen question
+- Downgrade WITHOUT explanation → RED_FLAG (MEDIUM)
+
+### 4.4 Environment Fit (Startup / Scale-up roles)
+
+If JD indicates startup or high-growth environment, boost score for:
+- Experience at companies < 200 employees
+- Evidence of wearing multiple hats
+- Self-built / zero-to-one achievements
+- Short feedback loops / rapid iteration language
+
+---
+
+## Step 5 — Generate Output
+
+### Per-candidate output (scorecard)
+
+```json
+{
+  "candidate_id": "string",
+  "name": "string | null",
+  "decision": "SHORTLIST" | "MAYBE" | "ELIMINATE",
+  "final_score_pct": 72.5,
+  "dimension_scores": {
+    "relevant_experience": 4,
+    "technical_skills": 3,
+    "measurable_achievements": 2,
+    "growth_mindset": 3,
+    "employment_stability": 4
+  },
+  "red_flags": [
+    { "pattern": "3 jobs < 6 months in last 3 years", "severity": "HIGH" }
+  ],
+  "strengths": ["Led 3 product launches with measurable revenue impact"],
+  "gaps": ["No direct B2B SaaS experience as required by JD"],
+  "career_logic": "SOUND" | "QUESTIONABLE" | "UNCLEAR",
+  "ownership_level": "OWNED" | "CO-OWNED" | "SUPPORTED",
+  "pre_screen_questions": [
+    "Why the gap between 2022–2024?",
+    "What was your specific contribution to the $2M revenue growth?"
+  ],
+  "fit_formula": {
+    "capability": 3.5,
+    "results": 2.0,
+    "stability": 4.0,
+    "motivation_signal": "PRESENT" | "ABSENT" | "UNCLEAR",
+    "risk_level": "LOW" | "MEDIUM" | "HIGH"
+  }
+}
+```
+
+### Fit Formula Evaluation
+
+```
+Candidate Fit = (Capability × Results × Stability) + Motivation Signal
+
+Capability  = avg(relevant_experience, technical_skills) / 5 × 10
+Results     = measurable_achievements / 5 × 10
+Stability   = employment_stability / 5 × 10
+Motivation  = +2 if present, 0 if absent, +1 if unclear
+
+Risk:
+  HIGH   → if any of Capability, Results, Stability < 4/10
+  MEDIUM → if Motivation = ABSENT
+  LOW    → all factors ≥ 6/10 and Motivation PRESENT
+```
+
+### Batch summary output
+
+```json
+{
+  "jd_title": "string",
+  "total_cvs": 30,
+  "eliminated_rapid_screen": 18,
+  "scored": 12,
+  "shortlist_count": 4,
+  "maybe_count": 3,
+  "final_eliminated_count": 5,
+  "avg_shortlist_score": 79.2,
+  "common_gaps": ["No measurable results", "Missing required cert X"]
+}
+```
+
+---
+
+## Configuration Overrides (via `config` input)
+
+```json
+{
+  "weights": {
+    "relevant_experience": 0.25,
+    "technical_skills": 0.35,
+    "measurable_achievements": 0.20,
+    "growth_mindset": 0.10,
+    "employment_stability": 0.10
+  },
+  "thresholds": {
+    "shortlist": 70,
+    "maybe": 55
+  },
+  "role_type": "technical" | "commercial" | "leadership" | "default",
+  "environment": "startup" | "corporate" | "default",
+  "disable_red_flags": []
+}
+```
+
+**Role-type presets** (applied when `role_type` is set):
+
+| Role Type | Boosted Dimensions |
+|---|---|
+| `technical` | `technical_skills` → 40%, `measurable_achievements` → 25% |
+| `commercial` | `relevant_experience` → 35%, `measurable_achievements` → 30% |
+| `leadership` | `growth_mindset` → 20%, `employment_stability` → 15% |
+
+---
+
+## Bias Mitigation Rules
+
+The agent MUST follow these rules to reduce evaluation bias:
+
+1. **No brand-name bias**: Do NOT give extra score for candidates from famous companies (FAANG, McKinsey, etc.) unless the JD explicitly requires it.
+2. **No formatting bias**: Ignore CV visual design, fonts, layout quality.
+3. **Batch comparison**: Score each candidate against the JD criteria, NOT against other candidates in the batch.
+4. **Explainability requirement**: Every `decision` MUST have at least one `strengths` or `gaps` entry explaining the score.
+5. **Consistent criteria**: The JD criteria extracted in Step 1 MUST NOT change mid-batch.
+
+---
+
+## Error Handling
+
+| Condition | Agent Behavior |
+|---|---|
+| JD is too vague to extract MUST_HAVE | Return error: `JD_INSUFFICIENT` with list of missing categories |
+| CV text is empty or < 100 chars | Mark as `ELIMINATED`, reason: `CV_TOO_SHORT` |
+| CV is in unsupported language | Mark as `REQUIRES_REVIEW`, reason: `LANGUAGE_NOT_SUPPORTED` |
+| config weights don't sum to 1.0 | Normalize automatically; log warning in summary |
+| Candidate ID not provided | Auto-assign sequential IDs: `candidate_001`, `candidate_002`, … |
+
+---
+
+## Example Usage
+
+```
+Input:
+  jd: "We are hiring a Senior Backend Engineer with 5+ years Go experience,
+       cloud-native background (AWS/GCP), and experience leading small teams..."
+  cvs: [
+    { candidate_id: "A001", text: "..." },
+    { candidate_id: "A002", text: "..." }
+  ]
+  config: { role_type: "technical", environment: "startup" }
+
+Output:
+  shortlist: [{ candidate_id: "A001", decision: "SHORTLIST", final_score_pct: 82.0, ... }]
+  eliminated: [{ candidate_id: "A002", decision: "ELIMINATE", rapid_screen: "ELIMINATED",
+                 eliminated_reasons: ["Missing required: 5+ years Go experience"] }]
+  summary: { total_cvs: 2, shortlist_count: 1, eliminated_rapid_screen: 1, ... }
+```
